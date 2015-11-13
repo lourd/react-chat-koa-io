@@ -12,6 +12,7 @@
   "dependencies": {
     "koa-spa": "^0.1.3",
     "koa.io": "0.0.3",
+    "lodash": "^3.10.1",
     "react": "^0.14.2",
     "react-dom": "^0.14.2",
     "socket.io": "^1.3.7",

@@ -1,6 +1,7 @@
 import React from 'react'
 import { render } from 'react-dom'
 import io from 'socket.io-client'
+import { throttle } from 'lodash'
 import './style.css'
 
 const LoginPage = React.createClass({
@@ -41,15 +42,18 @@ const ChatPage = React.createClass({
     onSubmit: React.PropTypes.func,
     socket: React.PropTypes.object,
     typingTimerLen: React.PropTypes.number,
+    typingThrottleDuration: React.PropTypes.number,
   },
 
   getDefaultProps() {
     return {
       typingTimerLen: 1000, // 1 second
+      typingThrottleDuration: 500,
     }
   },
 
   getInitialState() {
+    this.emitTyping = throttle(this._emitTyping, this.props.typingThrottleDuration)
     return {
       message: '',
       lastTypeTime: 0,
@@ -68,12 +72,16 @@ const ChatPage = React.createClass({
     }
   },
 
+  _emitTyping() {
+    this.props.socket.emit('typing')
+  },
+
   handleChange(event) {
     this.setState({
       message: event.target.value,
       lastTypeTime: +new Date(),
     })
-    this.props.socket.emit('typing')
+    this.emitTyping()
     setTimeout(() => {
       if ( +new Date() - this.state.lastTypeTime > this.props.typingTimerLen ) {
         this.props.socket.emit('stop typing')

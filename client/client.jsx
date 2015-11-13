@@ -3,8 +3,6 @@ import { render } from 'react-dom'
 import io from 'socket.io-client'
 import './style.css'
 
-const TYPING_TIMER_LENGTH = 400; // ms
-
 const LoginPage = React.createClass({
   propTypes: {
     onSubmit: React.PropTypes.func,
@@ -42,6 +40,13 @@ const ChatPage = React.createClass({
     typing: React.PropTypes.string, // name of other person who is typing
     onSubmit: React.PropTypes.func,
     socket: React.PropTypes.object,
+    typingTimerLen: React.PropTypes.number,
+  },
+
+  getDefaultProps() {
+    return {
+      typingTimerLen: 1000, // 1 second
+    }
   },
 
   getInitialState() {
@@ -64,14 +69,16 @@ const ChatPage = React.createClass({
   },
 
   handleChange(event) {
-    this.setState({ message: event.target.value })
+    this.setState({
+      message: event.target.value,
+      lastTypeTime: +new Date(),
+    })
     this.props.socket.emit('typing')
-    this.setState({ lastTypeTime: +new Date() })
     setTimeout(() => {
-      if ( +new Date() - this.state.lastTypeTime > TYPING_TIMER_LENGTH ) {
+      if ( +new Date() - this.state.lastTypeTime > this.props.typingTimerLen ) {
         this.props.socket.emit('stop typing')
       }
-    }, TYPING_TIMER_LENGTH ) // 3 second delay
+    }, this.props.typingTimerLen )
   },
 
   render() {

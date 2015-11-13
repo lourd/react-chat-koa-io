@@ -87,6 +87,7 @@ app.io.route('new message', function* (next, message) {
     username: this.username,
     message: message
   })
+  this.response.body = 'niiiiiice'
 })
 
 // when the client emits 'typing', we broadcast it to others

@@ -184,7 +184,9 @@ const App = React.createClass({
   sendMessage(message) {
     if ( !message ) return // don't send empty messages
 
-    this.props.socket.emit('new message', message)
+    this.props.socket.emit('new message', message, (res) => {
+      console.log("res!!", res);
+    })
     this.setState({
       messages: this.state.messages.concat(message)
     })

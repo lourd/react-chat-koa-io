@@ -1,13 +1,20 @@
-const Html = require('html-webpack-plugin')
+var path = require('path')
+var webpack = require('webpack')
 
-const config = {
-  entry: './src/client.jsx',
+const devConfig = {
+  devtool: '#source-map',
+  entry: [
+    'webpack-hot-middleware/client',
+    './client/client.jsx',
+  ],
   output: {
-    path: 'build',
+    path: path.join(__dirname, 'dist'),
     filename: 'bundle.js',
+    publicPath: '/static/',
   },
   plugins: [
-    new Html(),
+    new webpack.HotModuleReplacementPlugin(),
+    new webpack.NoErrorsPlugin(),
   ],
   module: {
     loaders: [
@@ -15,10 +22,6 @@ const config = {
         test: /\.jsx?$/,
         exclude: /node_modules/,
         loader: 'babel',
-        query: {
-          presets: ['es2015'],
-          plugins: ['transform-react-jsx'],
-        },
       },
       {
         test: /\.css$/,
@@ -31,4 +34,4 @@ const config = {
   },
 }
 
-module.exports = config
+module.exports.dev = devConfig

@@ -14,18 +14,15 @@ function App() {
       </li>
       <li className="login page">
         <div className="form">
-          <h3 className="title">What's your nickname?</h3>
-          <input className="usernameInput" type="text" maxlength="14" />
+          <h3 className="title">What's your name?</h3>
+          <input className="usernameInput" type="text" maxLength="14" />
         </div>
       </li>
     </ul>
   )
 }
 
-render(<App/>, document.body);
-
-
-
+render(<App/>, document.getElementById('root'))
 
 // $(function() {
 //   var FADE_TIME = 150; // ms

@@ -3,26 +3,195 @@ import { render } from 'react-dom'
 import io from 'socket.io-client'
 import './style.css'
 
-function App() {
-  return (
-    <ul className="pages">
-      <li className="chat page">
-        <div className="chatArea">
-          <ul className="messages"></ul>
-        </div>
-        <input className="inputMessage" placeholder="Type here..."/>
-      </li>
-      <li className="login page">
-        <div className="form">
-          <h3 className="title">What's your name?</h3>
-          <input className="usernameInput" type="text" maxLength="14" />
-        </div>
-      </li>
-    </ul>
-  )
-}
+const TYPING_TIMER_LENGTH = 400; // ms
 
-render(<App/>, document.getElementById('root'))
+const LoginPage = React.createClass({
+  propTypes: {
+    onSubmit: React.PropTypes.func,
+  },
+
+  handleSubmit(event) {
+    event.preventDefault()
+    this.props.onSubmit(this.userInput.value)
+  },
+
+  componentDidMount() {
+    this.userInput.focus()
+  },
+
+  render() {
+    return (
+      <div className="login page">
+        <form className="form"
+          onSubmit={this.handleSubmit}>
+          <h3 className="title">What's your name?</h3>
+          <input
+            ref={(ref) => this.userInput = ref}
+            className="usernameInput"
+            type="text"
+            maxLength="14" />
+          </form>
+      </div>
+    )
+  },
+})
+
+const ChatPage = React.createClass({
+  propTypes : {
+    messages: React.PropTypes.arrayOf(React.PropTypes.string).isRequired,
+    typing: React.PropTypes.string, // name of other person who is typing
+    onSubmit: React.PropTypes.func,
+    socket: React.PropTypes.object,
+  },
+
+  getInitialState() {
+    return {
+      message: '',
+      lastTypeTime: 0,
+    }
+  },
+
+  componentDidMount() {
+    this.textInput.focus()
+  },
+
+  handleKeyDown({ key }) {
+    if ( key === 'Enter' ) {
+      this.props.onSubmit(this.state.message)
+      this.setState({ message: '' })
+      this.props.socket.emit('stop typing')
+    }
+  },
+
+  handleChange(event) {
+    this.setState({ message: event.target.value })
+    this.props.socket.emit('typing')
+    this.setState({ lastTypeTime: +new Date() })
+    setTimeout(() => {
+      if ( +new Date() - this.state.lastTypeTime > TYPING_TIMER_LENGTH ) {
+        this.props.socket.emit('stop typing')
+      }
+    }, TYPING_TIMER_LENGTH ) // 3 second delay
+  },
+
+  render() {
+    const { messages, typing } = this.props
+    let typingIndicator
+    if ( typing ) {
+      typingIndicator = <div className="typing message">{`${typing} is typing...`}</div>
+    }
+    return (
+      <div className="chatPage">
+        <ul className="chatArea messages">
+          {this.props.messages.map((message, index) => (
+            <li key={index}>{message}</li>
+          ))}
+          {typingIndicator}
+        </ul>
+        <input
+          ref={(ref) => this.textInput = ref}
+          value={this.state.message}
+          onKeyDown={this.handleKeyDown}
+          onChange={this.handleChange}
+          className="inputMessage"
+          placeholder="Type here..."/>
+      </div>
+    )
+  }
+})
+
+const App = React.createClass({
+  getInitialState() {
+    this.setupSocket()
+    return {
+      username: null,
+      messages: [],
+      typing: null,
+    }
+  },
+
+  setupSocket() {
+    const { socket } = this.props
+    // Socket events
+    // Whenever the server emits 'login', log the login message
+    socket.on('login', ({ numUsers }) => {
+      // Display the welcome message
+      this.setState({
+        messages: this.state.messages.concat([
+          'Welcome to Socket.io chat!',
+          `There are ${numUsers} here`,
+        ]),
+      })
+    })
+
+    socket.on('new message', ({ message, username }) => {
+      this.setState({
+        messages: this.state.messages.concat(`${username}: ${message}`)
+      })
+    })
+
+    socket.on('user joined', ({ username, numUsers }) => {
+      this.setState({
+        messages: this.state.messages.concat([
+          `${username} joined (${numUsers} here)`,
+        ])
+      })
+    })
+
+    socket.on('user left', ({ username, numUsers }) => {
+      this.setState({
+        messages: this.state.messages.concat([
+          `${username} left (${numUsers} still here)`,
+        ])
+      })
+    })
+
+    socket.on('typing', ({ username }) => {
+      if ( username !== this.state.username ) {
+        this.setState({
+          typing: username,
+        })
+      }
+    })
+
+    socket.on('stop typing', () => {
+      this.setState({
+        typing: null,
+      })
+    })
+  },
+
+  login(username) {
+    this.props.socket.emit('add user', username)
+    this.setState({ username })
+  },
+
+  sendMessage(message) {
+    if ( !message ) return // don't send empty messages
+
+    this.props.socket.emit('new message', message)
+    this.setState({
+      messages: this.state.messages.concat(message)
+    })
+  },
+
+  render() {
+    if ( !this.state.username ) {
+      return <LoginPage onSubmit={this.login} />
+    } else {
+      return (
+        <ChatPage
+          onSubmit={this.sendMessage}
+          messages={this.state.messages}
+          typing={this.state.typing}
+          socket={this.props.socket} />
+      )
+    }
+  }
+})
+
+const socket = io()
+render(<App socket={socket} />, document.getElementById('root'))
 
 // $(function() {
 //   var FADE_TIME = 150; // ms
@@ -73,7 +242,7 @@ render(<App/>, document.getElementById('root'))
 //       $currentInput = $inputMessage.focus();
 
 //       // Tell the server your username
-//       socket.emit('add user', username);
+//       ;
 //     }
 //   }
 
@@ -251,44 +420,3 @@ render(<App/>, document.getElementById('root'))
 
 // });
 
-
-//   // Socket events
-//   var socket = io();
-//   // Whenever the server emits 'login', log the login message
-//   socket.on('login', function (data) {
-//     connected = true;
-//     // Display the welcome message
-//     var message = "Welcome to Socket.IO Chat – ";
-//     log(message, {
-//       prepend: true
-//     });
-//     addParticipantsMessage(data);
-//   });
-
-//   // Whenever the server emits 'new message', update the chat body
-//   socket.on('new message', function (data) {
-//     addChatMessage(data);
-//   });
-
-//   // Whenever the server emits 'user joined', log it in the chat body
-//   socket.on('user joined', function (data) {
-//     log(data.username + ' joined');
-//     addParticipantsMessage(data);
-//   });
-
-//   // Whenever the server emits 'user left', log it in the chat body
-//   socket.on('user left', function (data) {
-//     log(data.username + ' left');
-//     addParticipantsMessage(data);
-//     removeChatTyping(data);
-//   });
-
-//   // Whenever the server emits 'typing', show the typing message
-//   socket.on('typing', function (data) {
-//     addChatTyping(data);
-//   });
-
-//   // Whenever the server emits 'stop typing', kill the typing message
-//   socket.on('stop typing', function (data) {
-//     removeChatTyping(data);
-//   });

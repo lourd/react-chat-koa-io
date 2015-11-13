@@ -1,3 +1,5 @@
+'use strict'
+
 const app = require('koa.io')()
 const spa = require('koa-spa')
 const path = require('path')
@@ -34,13 +36,13 @@ app.listen(port, function () {
 
 // usernames which are currently connected to the chat
 const usernames = {}
-const numUsers = 0
+let numUsers = 0
 
 // middleware for connect and disconnect
 app.io.use(function* userLeft(next) {
   // on connect
   console.log('somebody connected')
-  console.log(this.headers)
+  // console.log(this.headers)
   yield* next
   // on disconnect
   if (this.addedUser) {
